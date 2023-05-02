@@ -1,0 +1,14 @@
+[
+    {
+        "ids": 1,
+        "name": "camera",
+        "url": 0,
+        "types": "<class 'int'>"
+    },
+    {
+        "ids": 2,
+        "name": "host",
+        "url": "https://vcsplay.scjtonline.cn:8195/live/HD_c53f71b3-4a6d-11eb-8edc-3cd2e55e088c.m3u8?auth_key=1683000448-0-0-cefa61b2b4a77cdf9bff5b11636b9c4e",
+        "types": "<class 'str'>"
+    }
+]
