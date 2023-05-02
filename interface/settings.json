@@ -1,0 +1,26 @@
+[
+    {
+        "ids": 1,
+        "name": "camera",
+        "url": 0,
+        "types": "<class 'int'>"
+    },
+    {
+        "ids": 2,
+        "name": "road",
+        "url": "https://vcsplay.scjtonline.cn:8195/live/HD_c53f71b3-4a6d-11eb-8edc-3cd2e55e088c.m3u8?auth_key=1683013072-0-0-3ae5901c2cd429aa36f0a8089ef0d9bb",
+        "types": "<class 'str'>"
+    },
+    {
+        "ids": 3,
+        "name": "asd",
+        "url": "https://vcsplay.scjtonline.cn:8093/live/HD_8327700c-546b-457f-b5d3-2396174a5aad.m3u8?auth_key=1683024154-0-0-9a985b2ecf87daa9a92e28c7c764b95c",
+        "types": "<class 'str'>"
+    },
+    {
+        "ids": 4,
+        "name": "asdasd",
+        "url": "https://vcsplay.scjtonline.cn:8094/live/HD_66545722-4b67-11eb-bf78-3cd2e55e0a36.m3u8?auth_key=1683024464-0-0-b79a0459d36ccc4c5492c69435625fc1",
+        "types": "<class 'str'>"
+    }
+]
