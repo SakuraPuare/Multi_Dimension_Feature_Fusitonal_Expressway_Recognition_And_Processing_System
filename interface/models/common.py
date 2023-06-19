@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as f
 from PIL import Image
 from torch.cuda import amp
 
@@ -1264,7 +1264,7 @@ class OREPA_3x3_RepConv(nn.Module):
 
     def forward(self, inputs):
         weight = self.weight_gen()
-        out = F.conv2d(inputs, weight, bias=None, stride=self.stride, padding=self.padding, dilation=self.dilation,
+        out = f.conv2d(inputs, weight, bias=None, stride=self.stride, padding=self.padding, dilation=self.dilation,
                        groups=self.groups)
 
         return self.nonlinear(self.bn(out))
@@ -1588,7 +1588,7 @@ class SwinTransformerLayer(nn.Module):
             # print(f'img_size {min(H_, W_)} is less than (or not divided by) window_size {self.window_size}, Padding.')
             pad_r = (self.window_size - W_ % self.window_size) % self.window_size
             pad_b = (self.window_size - H_ % self.window_size) % self.window_size
-            x = F.pad(x, (0, pad_r, 0, pad_b))
+            x = f.pad(x, (0, pad_r, 0, pad_b))
 
         # print('2', x.shape)
         B, C, H, W = x.shape
@@ -1788,12 +1788,12 @@ class WindowAttention_v2(nn.Module):
         qkv_bias = None
         if self.q_bias is not None:
             qkv_bias = torch.cat((self.q_bias, torch.zeros_like(self.v_bias, requires_grad=False), self.v_bias))
-        qkv = F.linear(input=x, weight=self.qkv.weight, bias=qkv_bias)
+        qkv = f.linear(input=x, weight=self.qkv.weight, bias=qkv_bias)
         qkv = qkv.reshape(B_, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
         # cosine attention
-        attn = (F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1))
+        attn = (f.normalize(q, dim=-1) @ f.normalize(k, dim=-1).transpose(-2, -1))
         logit_scale = torch.clamp(self.logit_scale, max=torch.log(torch.tensor(1. / 0.01))).exp()
         attn = attn * logit_scale
 
@@ -1935,7 +1935,7 @@ class SwinTransformerLayer_v2(nn.Module):
             # print(f'img_size {min(H_, W_)} is less than (or not divided by) window_size {self.window_size}, Padding.')
             pad_r = (self.window_size - W_ % self.window_size) % self.window_size
             pad_b = (self.window_size - H_ % self.window_size) % self.window_size
-            x = F.pad(x, (0, pad_r, 0, pad_b))
+            x = f.pad(x, (0, pad_r, 0, pad_b))
 
         # print('2', x.shape)
         B, C, H, W = x.shape

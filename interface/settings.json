@@ -18,6 +18,12 @@
         "types": "<class 'str'>"
     },
     {
+        "ids": 5,
+        "name": "测试",
+        "url": "C:\\Users\\SakuraPuare\\Videos\\2023-05-02 16-20-47.mkv",
+        "types": "<class 'str'>"
+    },
+    {
         "ids": 4,
         "name": "asdasd",
         "url": "https://vcsplay.scjtonline.cn:8094/live/HD_66545722-4b67-11eb-bf78-3cd2e55e0a36.m3u8?auth_key=1683024464-0-0-b79a0459d36ccc4c5492c69435625fc1",
