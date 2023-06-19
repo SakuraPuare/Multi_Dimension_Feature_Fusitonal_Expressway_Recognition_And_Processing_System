@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QTableWidgetItem, QLineEdit, QPushButton, QDialog, QHBoxLayout, QLabel
 
+from ui import config as ui_config
 from ui import main as ui_main
 from ui import source as ui_source
 
@@ -76,12 +77,38 @@ class SettingItem:
         return self.ids > other.ids
 
 
+class ConfigWindow(ui_config.Ui_Dialog):
+    def __init__(self, parent=None):
+        self.parent = parent
+        self.dialog = QtWidgets.QDialog(parent.widget)
+        super().__init__()
+        self.setupUi(self.dialog)
+
+        self.SaveButton.clicked.connect(self.save_setting)
+        self.CancelButton.clicked.connect(self.dialog.close)
+
+        self.load_setting()
+
+    def load_setting(self):
+        # set text in line edit
+        self.IoUEdit.setText(str(self.parent.iou_threshold))
+        self.ConfEdit.setText(str(self.parent.conf_threshold))
+        self.SizeEdit.setText(str(self.parent.img_size))
+
+    def save_setting(self):
+        self.parent.iou_threshold = float(self.IoUEdit.text())
+        self.parent.conf_threshold = float(self.ConfEdit.text())
+        self.parent.size_threshold = float(self.SizeEdit.text())
+        self.parent.save_to_config()
+        self.dialog.close()
+
+
 class SourceWindows(ui_source.Ui_dialog):
     def __init__(self, parent=None):
         self.parent = parent
         self.setting_list = SettingList()
-        self.dialog = QtWidgets.QDialog(parent.widget)
         super().__init__()
+        self.dialog = QtWidgets.QDialog(parent.widget)
         self.setupUi(self.dialog)
 
         self.AddSourceButton.clicked.connect(self.add_setting)
@@ -229,25 +256,20 @@ class SourceWindows(ui_source.Ui_dialog):
 
 
 class MainWindows(ui_main.Ui_Form):
+    _video_url = ''
+    _iou_threshold = 0.5
+    _conf_threshold = 0.5
+    _img_size = 640
+
     def __init__(self):
-        self.widget = QtWidgets.QWidget()
         super().__init__()
+        self.widget = QtWidgets.QWidget()
         self.setupUi(self.widget)
 
         self.show_text('请设置视频源')
-        self.setup_ui_source()
+        self.init()
 
         self.video_url = ''
-
-    def show_text(self, text, font_size=40):
-        # set text
-        self.label.setText(text)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setWordWrap(True)
-        # font
-        font = QFont()
-        font.setPointSize(font_size)
-        self.label.setFont(font)
 
     @property
     def video_url(self):
@@ -262,10 +284,46 @@ class MainWindows(ui_main.Ui_Form):
         else:
             self.show_text('视频源: {}'.format(url), 20)
 
-    def setup_ui_source(self):
+    @property
+    def iou_threshold(self):
+        return self._iou_threshold
+
+    @iou_threshold.setter
+    def iou_threshold(self, value):
+        self._iou_threshold = value
+
+    @property
+    def conf_threshold(self):
+        return self._conf_threshold
+
+    @conf_threshold.setter
+    def conf_threshold(self, value):
+        self._conf_threshold = value
+
+    @property
+    def img_size(self):
+        return self._img_size
+
+    @img_size.setter
+    def img_size(self, value):
+        self._img_size = value
+
+    def show_text(self, text, font_size=40):
+        # set text
+        self.label.setText(text)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label.setWordWrap(True)
+        # font
+        font = QFont()
+        font.setPointSize(font_size)
+        self.label.setFont(font)
+
+    def init(self):
         self.sourceWindow = SourceWindows(self)
+        self.settingWindow = ConfigWindow(self)
         # click to show source window
         self.SourceButton.clicked.connect(self.sourceWindow.dialog.show)
+        self.thresholdButton.clicked.connect(self.settingWindow.dialog.show)
 
 
 if __name__ == "__main__":
