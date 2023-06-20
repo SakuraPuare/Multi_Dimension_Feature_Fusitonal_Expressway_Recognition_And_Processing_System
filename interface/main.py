@@ -1,16 +1,294 @@
 # coding=utf-8
 import json
+import random
+import re
 import sys
-from typing import Union
+import time
+from threading import Thread
+from typing import Union, List, Any
 
+import cv2
+import numpy as np
+import torch
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QImage, QPixmap
 from PyQt6.QtWidgets import QTableWidgetItem, QLineEdit, QPushButton, QDialog, QHBoxLayout, QLabel
+from torch import nn
+from torch.backends import cudnn
 
+from models.common import Conv
+from models.experimental import Ensemble
 from ui import config as ui_config
 from ui import main as ui_main
 from ui import source as ui_source
+from utils.datasets import letterbox
+from utils.general import check_img_size, check_imshow, non_max_suppression, scale_coords
+from utils.plots import plot_one_box
+from utils.torch_utils import select_device
+
+
+def clear_str(l: List[Any]):
+    t = []
+    for i in l:
+        if i is None:
+            t.append(None)
+        elif isinstance(i, str):
+            t.append(re.sub(pattern="[|@#!¡·$€%&()=?¿^*;:,¨´><+]", repl="_", string=i))
+        else:
+            t.append(i)
+    return t
+
+
+def attempt_load(weights, device=None) -> Ensemble:
+    # Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
+    model = Ensemble()
+    for w in weights if isinstance(weights, list) else [weights]:
+        ckpt = torch.load(w, map_location=device)  # load
+        model.append(ckpt['ema' if ckpt.get('ema') else 'model'].float().fuse().eval())  # FP32 model
+
+    # Compatibility updates
+    for m in model.modules():
+        if type(m) in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
+            m.inplace = True  # pytorch 1.7.0 compatibility
+        elif type(m) is nn.Upsample:
+            m.recompute_scale_factor = None  # torch 1.11.0 compatibility
+        elif type(m) is Conv:
+            m._non_persistent_buffers_set = set()  # pytorch 1.6.0 compatibility
+
+    if len(model) == 1:
+        return model[-1]  # return model
+    else:
+        print('Ensemble created with %s\n' % weights)
+        for k in ['names', 'stride']:
+            setattr(model, k, getattr(model[-1], k))
+        return model  # return ensemble
+
+
+class Render(QLabel):
+    class Stream:
+        def __init__(self, sources, img_size=640, stride=32):
+            self.img = []
+
+            self.sources = sources  # clean source names for later
+            self.img_size = img_size
+            self.stride = stride
+
+            self._stop = False
+            # Start the thread to read frames from the video stream
+            url = eval(self.sources) if self.sources.isnumeric() else self.sources
+
+            self.cap = cv2.VideoCapture(url)
+            if not self.cap.isOpened():
+                print(f'Failed to open {url}')
+                raise IOError
+            w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.fps = self.cap.get(cv2.CAP_PROP_FPS) % 100
+
+            ret, self.img = self.cap.read()  # guarantee first frame
+            print(f' success ({w}x{h} at {self.fps:.2f} FPS).')
+
+            self.thread = Thread(target=self.update, args=([self.cap]), daemon=True)
+            self.thread.start()
+            # check for common shapes
+            s = np.stack(letterbox(self.img, self.img_size, stride=self.stride)[0].shape)  # shapes
+            self.rect = np.unique(s, axis=0).shape[0] == 1  # rect inference if all shapes equal
+
+        def update(self, cap):
+            # Read next stream frame in a daemon thread
+            n = 0
+            # while cap and thread not to stop
+            while cap.isOpened() and self.thread.is_alive() and not self._stop:
+                n += 1
+                cap.grab()
+                if n == 2:  # read every 4th frame
+                    success, im = cap.retrieve()
+                    self.img = im if success else self.img * 0
+                    n = 0
+                time.sleep(1 / self.fps)  # wait time
+
+        def stop(self):
+            self.cap.release()
+            # send stop signal to thread
+            self._stop = True
+            self.thread.join()
+
+        def __iter__(self):
+            self.count = -1
+            return self
+
+        def __next__(self):
+            self.count += 1
+            img0 = self.img.copy()
+            if cv2.waitKey(1) == ord('q'):  # q to quit
+                cv2.destroyAllWindows()
+                raise StopIteration
+            # Letterbox
+            img = letterbox(img0, self.img_size, auto=self.rect, stride=self.stride)[0]
+            # Stack
+            img = np.stack(img)
+            # Convert
+            img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to bsx3x416x416
+            img = np.ascontiguousarray(img)
+            return img, img0
+
+        def __len__(self):
+            return 0  # 1E12 frames = 32 streams at 30 FPS for 30 years
+
+    class Render:
+        def __init__(self, parent, video_url):
+            self.parent = parent
+
+            self._stop = False
+            self.video_url = video_url
+
+            self.stream = Render.Stream(sources=self.video_url)
+            self.thread = Thread(target=self.run, daemon=True)
+
+        def run(self):
+            for _, img0 in self.stream:
+                # stop the thread if stop signal received
+                if self._stop:
+                    break
+
+                rgb_image = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
+                h, w, ch = rgb_image.shape
+                bytes_per_line = ch * w
+                convert_to_qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+                p = convert_to_qt_format.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                self.parent.label.setPixmap(QPixmap.fromImage(p))
+
+        def start(self):
+            self.thread.start()
+
+        def stop(self):
+            self._stop = True
+            self.stream.stop()
+            self.thread.join()
+
+    class Detect:
+        def __init__(self, parent, video_url, img_size=640, iou_threshold=0.45, conf_threshold=0.25):
+            self.parent = parent
+            self._stop = False
+
+            self.video_url = video_url
+            self.img_size = img_size
+            self.iou_threshold = iou_threshold
+            self.conf_threshold = conf_threshold
+
+            self.half = device.type != 'cpu'
+            self.stride = int(model.stride.max())  # model stride
+            self.imgsz = check_img_size(self.img_size, s=self.stride)
+
+            if self.half:
+                model.half()  # to FP16
+            check_imshow()
+            cudnn.benchmark = True  # set True to speed up constant image size inference
+
+            self.stream = Render.Stream(sources=self.video_url, img_size=self.img_size, stride=self.stride)
+
+            self.names = model.module.names if hasattr(model, 'module') else model.names
+            self.colors = [[random.randint(0, 255) for _ in range(3)] for _ in self.names]
+
+            if device.type != 'cpu':
+                model(
+                    torch.zeros(1, 3, self.imgsz, self.imgsz).to(device).type_as(next(model.parameters())))  # run once
+            self.old_img_w = self.old_img_h = self.imgsz
+            self.old_img_b = 1
+
+            self.thread = Thread(target=self.run, daemon=True)
+
+        def run(self):
+            for img, im0s in self.stream:
+                if self._stop:
+                    break
+
+                img = torch.from_numpy(img).to(device)
+                img = img.half() if self.half else img.float()  # uint8 to fp16/32
+                img /= 255.0  # 0 - 255 to 0.0 - 1.0
+                if img.ndimension() == 3:
+                    img = img.unsqueeze(0)
+
+                # Warmup
+                if device.type != 'cpu' and (
+                        self.old_img_b != img.shape[0] or self.old_img_h != img.shape[2] or self.old_img_w != img.shape[
+                    3]):
+                    self.old_img_b = img.shape[0]
+                    self.old_img_h = img.shape[2]
+                    self.old_img_w = img.shape[3]
+                    for i in range(3):
+                        model(img)[0]
+
+                # Inference
+                with torch.no_grad():  # Calculating gradients would cause a GPU memory leak
+                    pred = model(img)[0]
+
+                # Apply NMS
+                pred = non_max_suppression(pred, self.conf_threshold, self.iou_threshold)
+
+                # Process detections
+                for i, det in enumerate(pred):  # detections per image
+                    im0 = im0s.copy()
+
+                    gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+                    if len(det):
+                        # Rescale boxes from img_size to im0 size
+                        det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
+
+                        # Write results
+                        for *xyxy, conf, cls in reversed(det):
+                            label = f'{self.names[int(cls)]} {conf:.2f}'
+                            plot_one_box(xyxy, im0, label=label, color=self.colors[int(cls)], line_thickness=1)
+
+                rgb_image = cv2.cvtColor(im0, cv2.COLOR_BGR2RGB)
+                h, w, ch = rgb_image.shape
+                bytes_per_line = ch * w
+                convert_to_qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+                p = convert_to_qt_format.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                self.parent.label.setPixmap(QPixmap.fromImage(p))
+
+        def start(self):
+            self.thread.start()
+
+        def stop(self):
+            self._stop = True
+            self.stream.stop()
+            self.thread.join()
+
+    def __init__(self, parent):
+        super().__init__(parent.widget)
+        self.parent = parent
+
+        self.label = self.parent.VideoLabel
+
+        self.sync()
+
+    def sync(self):
+        self.video_url = self.parent.video_url
+        self.iou_threshold = self.parent.iou_threshold
+        self.conf_threshold = self.parent.conf_threshold
+        self.img_size = self.parent.img_size
+        self.is_detect = self.parent.is_detect
+
+    def reload(self):
+        self.sync()
+        self.release()
+
+        if self.is_detect:
+            self.detect = self.Detect(self, self.video_url, self.img_size, self.iou_threshold, self.conf_threshold)
+        else:
+            self.detect = self.Render(self, self.video_url)
+        self.detect.start()
+
+    def release(self):
+        if hasattr(self, 'detect') and self.detect and self.detect.thread.is_alive():
+            self.detect.stop()
+
+    def close(self):
+        self.release()
+        # clear image
+        self.label.clear()
 
 
 class SettingList(list):
@@ -24,19 +302,20 @@ class SettingList(list):
     def increase_ids(self):
         return (max(self).ids if len(self) else 0) + 1
 
+    def swap(self, index1: int, index2: int):
+        t = self[index1]
+        self[index1] = self[index2]
+        self[index2] = t
+
     def up_move(self, index: int):
         if index == 0:
             return
-        t = self[index]
-        self[index] = self[index - 1]
-        self[index - 1] = t
+        self.swap(index, index - 1)
 
     def down_move(self, index: int):
         if index == len(self) - 1:
             return
-        t = self[index]
-        self[index] = self[index + 1]
-        self[index + 1] = t
+        self.swap(index, index + 1)
 
 
 class SettingItem:
@@ -121,6 +400,7 @@ class SourceWindows(ui_source.Ui_dialog):
         self.SaveButton.clicked.connect(self.save_setting)
         self.SelectButton.clicked.connect(self.select_setting)
         self.CancelButtoon.clicked.connect(self.dialog.close)
+        self.CloseSourceButton.clicked.connect(self.close_setting)
 
         self.load_setting()
 
@@ -163,6 +443,10 @@ class SourceWindows(ui_source.Ui_dialog):
             types = types_edit.text()
             setting.name = name_edit.text()
             setting.url, _ = setting.load_url(url_edit.text(), types)
+            setting.types = types
+
+            row = self.tableWidget.currentRow()
+            self.setting_list[row] = setting
 
             self.flush_setting()
             # self.save_to_config()
@@ -205,6 +489,7 @@ class SourceWindows(ui_source.Ui_dialog):
     def save_setting(self):
         with open('settings.json', 'w', encoding='utf-8') as f:
             json.dump(self.setting_list, f, default=lambda x: x.__dict__(), ensure_ascii=False, indent=4)
+        self.dialog.close()
 
     def load_setting(self):
         with open("settings.json", 'r', encoding='u8') as f:
@@ -251,8 +536,9 @@ class SourceWindows(ui_source.Ui_dialog):
             self.parent.video_url = self.setting_list[row].url
             self.dialog.close()
 
-    def cancel_setting(self):
+    def close_setting(self):
         self.parent.video_url = ''
+        self.dialog.close()
 
 
 class MainWindows(ui_main.Ui_Form):
@@ -260,6 +546,55 @@ class MainWindows(ui_main.Ui_Form):
     _iou_threshold = 0.5
     _conf_threshold = 0.5
     _img_size = 640
+    _is_detect = True
+
+    @property
+    def video_url(self):
+        return self._video_url
+
+    @property
+    def iou_threshold(self):
+        return self._iou_threshold
+
+    @property
+    def conf_threshold(self):
+        return self._conf_threshold
+
+    @property
+    def img_size(self):
+        return self._img_size
+
+    @property
+    def is_detect(self):
+        return self._is_detect
+
+    @video_url.setter
+    def video_url(self, url):
+        print(url)
+        self._video_url = url
+        if url == '':
+            self.render.close()
+            self.show_text('请设置视频源')
+        else:
+            self.render.reload()
+
+    @iou_threshold.setter
+    def iou_threshold(self, value):
+        self._iou_threshold = value
+
+    @conf_threshold.setter
+    def conf_threshold(self, value):
+        self._conf_threshold = value
+
+    @img_size.setter
+    def img_size(self, value):
+        self._img_size = value
+        self.render.reload()
+
+    @is_detect.setter
+    def is_detect(self, value):
+        self._is_detect = value
+        self.render.reload()
 
     def __init__(self):
         super().__init__()
@@ -269,54 +604,19 @@ class MainWindows(ui_main.Ui_Form):
         self.show_text('请设置视频源')
         self.init()
 
-        self.video_url = ''
+        self._video_url = ''
 
-    @property
-    def video_url(self):
-        return self._video_url
-
-    @video_url.setter
-    def video_url(self, url):
-        print(url)
-        self._video_url = url
-        if url == '':
-            self.show_text('请设置视频源')
-        else:
-            self.show_text('视频源: {}'.format(url), 20)
-
-    @property
-    def iou_threshold(self):
-        return self._iou_threshold
-
-    @iou_threshold.setter
-    def iou_threshold(self, value):
-        self._iou_threshold = value
-
-    @property
-    def conf_threshold(self):
-        return self._conf_threshold
-
-    @conf_threshold.setter
-    def conf_threshold(self, value):
-        self._conf_threshold = value
-
-    @property
-    def img_size(self):
-        return self._img_size
-
-    @img_size.setter
-    def img_size(self, value):
-        self._img_size = value
+        self.render = Render(self)
 
     def show_text(self, text, font_size=40):
         # set text
-        self.label.setText(text)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setWordWrap(True)
+        self.VideoLabel.setText(text)
+        self.VideoLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.VideoLabel.setWordWrap(True)
         # font
         font = QFont()
         font.setPointSize(font_size)
-        self.label.setFont(font)
+        self.VideoLabel.setFont(font)
 
     def init(self):
         self.sourceWindow = SourceWindows(self)
@@ -327,6 +627,8 @@ class MainWindows(ui_main.Ui_Form):
 
 
 if __name__ == "__main__":
+    device = select_device('0')
+    model = attempt_load('yolov7.pt', device)
     app = QtWidgets.QApplication(sys.argv)
     ui = MainWindows()
     ui.widget.show()
