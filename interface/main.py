@@ -273,6 +273,10 @@ class Render(QLabel):
 
     def reload(self):
         self.sync()
+
+        if self.video_url == '':
+            return
+
         self.release()
 
         if self.is_detect:
@@ -360,8 +364,8 @@ class ConfigWindow(ui_config.Ui_Dialog):
     def save_setting(self):
         self.parent.iou_threshold = float(self.IoUEdit.text())
         self.parent.conf_threshold = float(self.ConfEdit.text())
-        self.parent.size_threshold = float(self.SizeEdit.text())
-        self.parent.save_to_config()
+        self.parent.img_size = float(self.SizeEdit.text())
+        self.parent.save_config()
         self.dialog.close()
 
 
@@ -380,7 +384,7 @@ class SourceWindows(ui_source.Ui_dialog):
         self.DelectSouceButton.clicked.connect(self.delete_setting)
         self.UpMoveButton.clicked.connect(self.up_move_setting)
         self.DownMoveButton.clicked.connect(self.down_move_setting)
-        self.FlushSourceButton.clicked.connect(self.flush_setting)
+        self.FlushSourceButton.clicked.connect(self.load_setting)
 
         self.SaveButton.clicked.connect(self.save_setting)
         self.SelectButton.clicked.connect(self.select_setting)
