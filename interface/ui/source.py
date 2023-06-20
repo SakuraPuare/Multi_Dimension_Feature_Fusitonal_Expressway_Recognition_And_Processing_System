@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'source.ui'
+# Form implementation generated from reading ui file '.\source.ui'
 #
 # Created by: PyQt6 UI code generator 6.4.2
 #
@@ -14,7 +14,7 @@ class Ui_dialog(object):
         dialog.setObjectName("dialog")
         dialog.resize(604, 355)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("icon.ico"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
+        icon.addPixmap(QtGui.QPixmap(".\\icon.ico"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
         dialog.setWindowIcon(icon)
         self.verticalLayoutWidget = QtWidgets.QWidget(parent=dialog)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 601, 351))
@@ -25,6 +25,10 @@ class Ui_dialog(object):
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.tableWidget = QtWidgets.QTableWidget(parent=self.verticalLayoutWidget)
+        self.tableWidget.setEnabled(True)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        self.tableWidget.setFont(font)
         self.tableWidget.viewport().setProperty("cursor", QtGui.QCursor(QtCore.Qt.CursorShape.CrossCursor))
         self.tableWidget.setLineWidth(1)
         self.tableWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -35,7 +39,7 @@ class Ui_dialog(object):
         self.tableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.tableWidget.setTextElideMode(QtCore.Qt.TextElideMode.ElideMiddle)
         self.tableWidget.setObjectName("tableWidget")
-        self.tableWidget.setColumnCount(4)
+        self.tableWidget.setColumnCount(3)
         self.tableWidget.setRowCount(0)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(0, item)
@@ -43,8 +47,6 @@ class Ui_dialog(object):
         self.tableWidget.setHorizontalHeaderItem(1, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(2, item)
-        item = QtWidgets.QTableWidgetItem()
-        self.tableWidget.setHorizontalHeaderItem(3, item)
         self.tableWidget.horizontalHeader().setCascadingSectionResizes(True)
         self.tableWidget.verticalHeader().setCascadingSectionResizes(True)
         self.horizontalLayout_2.addWidget(self.tableWidget)
@@ -102,14 +104,13 @@ class Ui_dialog(object):
     def retranslateUi(self, dialog):
         _translate = QtCore.QCoreApplication.translate
         dialog.setWindowTitle(_translate("dialog", "视频流设置"))
+        self.tableWidget.setSortingEnabled(False)
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("dialog", "ids"))
         item = self.tableWidget.horizontalHeaderItem(1)
         item.setText(_translate("dialog", "name"))
         item = self.tableWidget.horizontalHeaderItem(2)
         item.setText(_translate("dialog", "url"))
-        item = self.tableWidget.horizontalHeaderItem(3)
-        item.setText(_translate("dialog", "types"))
         self.AddSourceButton.setText(_translate("dialog", "添加"))
         self.EditSourceButton.setText(_translate("dialog", "编辑"))
         self.DelectSouceButton.setText(_translate("dialog", "删除"))

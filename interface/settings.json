@@ -2,25 +2,11 @@
     {
         "ids": 1,
         "name": "camera",
-        "url": "0",
-        "types": "<class 'str'>"
-    },
-    {
-        "ids": 2,
-        "name": "road",
-        "url": "https://vcsplay.scjtonline.cn:8195/live/HD_c53f71b3-4a6d-11eb-8edc-3cd2e55e088c.m3u8?auth_key=1683013072-0-0-3ae5901c2cd429aa36f0a8089ef0d9bb",
-        "types": "<class 'str'>"
-    },
-    {
-        "ids": 3,
-        "name": "asd",
-        "url": "https://vcsplay.scjtonline.cn:8093/live/HD_8327700c-546b-457f-b5d3-2396174a5aad.m3u8?auth_key=1683024154-0-0-9a985b2ecf87daa9a92e28c7c764b95c",
-        "types": "<class 'str'>"
+        "url": "0"
     },
     {
         "ids": 5,
         "name": "测试",
-        "url": "C:\\Users\\SakuraPuare\\Videos\\2023-05-02 16-20-47.mkv",
-        "types": "<class 'str'>"
+        "url": "C:\\Users\\SakuraPuare\\Videos\\2023-05-02 16-20-47.mkv"
     }
 ]

@@ -31,6 +31,14 @@
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <widget class="QTableWidget" name="tableWidget">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+         </font>
+        </property>
         <property name="cursor" stdset="0">
          <cursorShape>CrossCursor</cursorShape>
         </property>
@@ -58,6 +66,9 @@
         <property name="textElideMode">
          <enum>Qt::ElideMiddle</enum>
         </property>
+        <property name="sortingEnabled">
+         <bool>false</bool>
+        </property>
         <attribute name="horizontalHeaderCascadingSectionResizes">
          <bool>true</bool>
         </attribute>
@@ -77,11 +88,6 @@
         <column>
          <property name="text">
           <string>url</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>types</string>
          </property>
         </column>
        </widget>

@@ -319,35 +319,18 @@ class SettingList(list):
 
 
 class SettingItem:
-    __keys__ = ['ids', 'name', 'url', 'types']
+    __keys__ = ['ids', 'name', 'url']
 
     def __init__(self, ids: int = None, name: str = None, url: Union[str, int, None] = None, types: str = None) -> None:
         self.ids = ids
         self.name = name
-
-        self.url, self.types = self.load_url(url, types)
-
-    @staticmethod
-    def load_url(url, types: str):
-        if types is None:
-            types = str(type(url))
-        elif types == "<class 'int'>":
-            url = int(url)
-        elif types == "<class 'str'>":
-            url = str(url)
-        elif types == "<class 'NoneType'>":
-            url = None
-        else:
-            raise TypeError(f'unknown type {types}')
-        return url, types
+        self.url = url
 
     def __dict__(self):
-        return {
-            'ids': self.ids,
-            'name': self.name,
-            'url': self.url,
-            'types': self.types
-        }
+        ret = {}
+        for key in self.__keys__:
+            ret[key] = getattr(self, key)
+        return ret
 
     def __repr__(self):
         return f'<SettingItem ids={self.ids}, name={self.name}, url={self.url}>'
@@ -389,6 +372,8 @@ class SourceWindows(ui_source.Ui_dialog):
         super().__init__()
         self.dialog = QtWidgets.QDialog(parent.widget)
         self.setupUi(self.dialog)
+
+        self.tableWidget.horizontalHeader().setStretchLastSection(True)
 
         self.AddSourceButton.clicked.connect(self.add_setting)
         self.EditSourceButton.clicked.connect(self.edit_setting)
@@ -440,10 +425,9 @@ class SourceWindows(ui_source.Ui_dialog):
 
     def edit_setting(self):
         def confirm():
-            types = types_edit.text()
             setting.name = name_edit.text()
-            setting.url, _ = setting.load_url(url_edit.text(), types)
-            setting.types = types
+            setting.url = url_edit.text()
+            setting.types = types_edit.text()
 
             row = self.tableWidget.currentRow()
             self.setting_list[row] = setting
@@ -470,8 +454,6 @@ class SourceWindows(ui_source.Ui_dialog):
             layout.addWidget(name_edit)
             layout.addWidget(QLabel('地址:', self.dialog))
             layout.addWidget(url_edit)
-            layout.addWidget(QLabel('类型:', self.dialog))
-            layout.addWidget(types_edit)
 
             layout.addWidget(confirm_button)
             layout.addWidget(cancel_button)
@@ -479,7 +461,6 @@ class SourceWindows(ui_source.Ui_dialog):
 
             name_edit.setText(setting.name)
             url_edit.setText(str(setting.url))
-            types_edit.setText(str(setting.types))
 
             confirm_button.clicked.connect(confirm)
             cancel_button.clicked.connect(edit_widget.close)
