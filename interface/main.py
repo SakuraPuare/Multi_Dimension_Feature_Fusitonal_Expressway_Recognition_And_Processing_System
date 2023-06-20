@@ -1,5 +1,6 @@
 # coding=utf-8
 import json
+import pathlib
 import random
 import re
 import sys
@@ -472,12 +473,14 @@ class SourceWindows(ui_source.Ui_dialog):
             edit_widget.show()
 
     def save_setting(self):
-        with open('settings.json', 'w', encoding='utf-8') as f:
+        with open(source_path, 'w', encoding='utf-8') as f:
             json.dump(self.setting_list, f, default=lambda x: x.__dict__(), ensure_ascii=False, indent=4)
         self.dialog.close()
 
     def load_setting(self):
-        with open("settings.json", 'r', encoding='u8') as f:
+        if not source_path.exists():
+            self.save_setting()
+        with open(source_path, 'r', encoding='u8') as f:
             self.setting_list = SettingList(json.load(f, object_hook=lambda x: SettingItem(**x)))
         self.flush_setting()
 
@@ -488,10 +491,6 @@ class SourceWindows(ui_source.Ui_dialog):
                 item = QTableWidgetItem(str(getattr(setting, key)))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.tableWidget.setItem(i, j, item)
-
-    def save_config(self):
-        with open('settings.json', 'w', encoding='utf-8') as f:
-            json.dump(self.setting_list, f, default=lambda x: x.__dict__(), ensure_ascii=False, indent=4)
 
     def delete_setting(self):
         row = self.tableWidget.currentRow()
@@ -528,8 +527,8 @@ class SourceWindows(ui_source.Ui_dialog):
 
 class MainWindows(ui_main.Ui_Form):
     _video_url = ''
-    _iou_threshold = 0.5
-    _conf_threshold = 0.5
+    _iou_threshold = 0.25
+    _conf_threshold = 0.45
     _img_size = 640
     _is_detect = True
 
@@ -604,14 +603,35 @@ class MainWindows(ui_main.Ui_Form):
         self.VideoLabel.setFont(font)
 
     def init(self):
+        self.load_config()
+
         self.sourceWindow = SourceWindows(self)
         self.settingWindow = ConfigWindow(self)
         # click to show source window
         self.SourceButton.clicked.connect(self.sourceWindow.dialog.show)
         self.thresholdButton.clicked.connect(self.settingWindow.dialog.show)
 
+    def save_config(self):
+        with open(setting_path, 'w', encoding='utf-8') as f:
+            json.dump({
+                'iou_threshold': self.iou_threshold,
+                'conf_threshold': self.conf_threshold,
+                'img_size': self.img_size,
+            }, f, ensure_ascii=False, indent=4)
+
+    def load_config(self):
+        if not setting_path.exists():
+            self.save_config()
+        with open(setting_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            self._iou_threshold = config.get('iou_threshold', self._iou_threshold)
+            self._conf_threshold = config.get('conf_threshold', self._conf_threshold)
+            self._img_size = config.get('img_size', self._img_size)
+
 
 if __name__ == "__main__":
+    source_path = pathlib.Path('sources.json')
+    setting_path = pathlib.Path('settings.json')
     device = select_device('0')
     model = attempt_load('yolov7.pt', device)
     app = QtWidgets.QApplication(sys.argv)
