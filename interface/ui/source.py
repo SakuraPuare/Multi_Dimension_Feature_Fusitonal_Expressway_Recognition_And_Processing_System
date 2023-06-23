@@ -89,7 +89,7 @@ class Ui_dialog(object):
         self.verticalLayout.addLayout(self.horizontalLayout)
 
         self.retranslateUi(dialog)
-        self.CancelButtoon.clicked.connect(dialog.close) # type: ignore
+        self.CancelButtoon.clicked.connect(dialog.close)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(dialog)
         dialog.setTabOrder(self.tableWidget, self.AddSourceButton)
         dialog.setTabOrder(self.AddSourceButton, self.EditSourceButton)

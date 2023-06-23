@@ -22,27 +22,32 @@ class Ui_Form(object):
         self.TopButtonVLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_2)
         self.TopButtonVLayout.setContentsMargins(0, 0, 0, 0)
         self.TopButtonVLayout.setObjectName("TopButtonVLayout")
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding,
+                                           QtWidgets.QSizePolicy.Policy.Minimum)
         self.TopButtonVLayout.addItem(spacerItem)
         self.SourceButton = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget_2)
         self.SourceButton.setObjectName("SourceButton")
         self.TopButtonVLayout.addWidget(self.SourceButton)
-        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding,
+                                            QtWidgets.QSizePolicy.Policy.Minimum)
         self.TopButtonVLayout.addItem(spacerItem1)
         self.thresholdButton = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget_2)
         self.thresholdButton.setObjectName("thresholdButton")
         self.TopButtonVLayout.addWidget(self.thresholdButton)
-        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding,
+                                            QtWidgets.QSizePolicy.Policy.Minimum)
         self.TopButtonVLayout.addItem(spacerItem2)
         self.barrierButton = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget_2)
         self.barrierButton.setObjectName("barrierButton")
         self.TopButtonVLayout.addWidget(self.barrierButton)
-        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding,
+                                            QtWidgets.QSizePolicy.Policy.Minimum)
         self.TopButtonVLayout.addItem(spacerItem3)
         self.quitButton = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget_2)
         self.quitButton.setObjectName("quitButton")
         self.TopButtonVLayout.addWidget(self.quitButton)
-        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding,
+                                            QtWidgets.QSizePolicy.Policy.Minimum)
         self.TopButtonVLayout.addItem(spacerItem4)
         self.horizontalLayoutWidget = QtWidgets.QWidget(parent=Form)
         self.horizontalLayoutWidget.setGeometry(QtCore.QRect(0, 100, 1281, 621))
@@ -65,7 +70,7 @@ class Ui_Form(object):
         self.InfoHLayout.addWidget(self.ForbidView)
 
         self.retranslateUi(Form)
-        self.quitButton.clicked.connect(Form.close) # type: ignore
+        self.quitButton.clicked.connect(Form.close)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(Form)
         Form.setTabOrder(self.SourceButton, self.thresholdButton)
         Form.setTabOrder(self.thresholdButton, self.barrierButton)

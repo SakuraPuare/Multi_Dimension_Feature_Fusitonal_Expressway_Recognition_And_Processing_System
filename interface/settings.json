@@ -1,5 +1,5 @@
 {
-    "iou_threshold": 0.25,
-    "conf_threshold": 0.45,
-    "img_size": 640
+  "iou_threshold": 0.25,
+  "conf_threshold": 0.45,
+  "img_size": 640
 }

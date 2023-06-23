@@ -566,8 +566,6 @@ class BarrierWindows(ui_barrier.Ui_widget):
                 self.painter.drawLine(self.last_point, event.pos())
                 self.update()
 
-
-
     def __init__(self, parent):
         self.parent = parent
         super().__init__()

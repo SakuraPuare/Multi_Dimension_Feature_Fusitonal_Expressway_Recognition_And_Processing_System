@@ -20,7 +20,7 @@ from PIL import Image, ExifTags
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from utils.general import check_requirements, xyxy2xywh, xywh2xyxy, xywhn2xyxy, xyn2xy, segment2box, segments2boxes, \
+from utils.general import xyxy2xywh, xywh2xyxy, xywhn2xyxy, xyn2xy, segment2box, segments2boxes, \
     resample_segments, clean_str
 from utils.torch_utils import torch_distributed_zero_first
 
@@ -1210,7 +1210,6 @@ def pastein(image, labels, sample_labels, sample_images, sample_masks):
                     image[ymin:ymin + r_h, xmin:xmin + r_w] = temp_crop
 
     return labels
-
 
 
 def create_folder(path='./new'):

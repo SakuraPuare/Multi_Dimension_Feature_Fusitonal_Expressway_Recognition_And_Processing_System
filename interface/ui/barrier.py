@@ -40,7 +40,8 @@ class Ui_widget(object):
         self.verticalLayout_3 = QtWidgets.QVBoxLayout()
         self.verticalLayout_3.setContentsMargins(20, -1, 20, -1)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum,
+                                           QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout_3.addItem(spacerItem)
         self.ArrorTool = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget)
         self.ArrorTool.setObjectName("ArrorTool")
@@ -51,7 +52,8 @@ class Ui_widget(object):
         self.EraserTool = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget)
         self.EraserTool.setObjectName("EraserTool")
         self.verticalLayout_3.addWidget(self.EraserTool)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum,
+                                            QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout_3.addItem(spacerItem1)
         self.verticalLayout_2.addLayout(self.verticalLayout_3)
         self.UndoButton = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget)
@@ -67,7 +69,7 @@ class Ui_widget(object):
         self.horizontalLayout.addLayout(self.verticalLayout)
 
         self.retranslateUi(widget)
-        self.CancelButton.clicked.connect(widget.close) # type: ignore
+        self.CancelButton.clicked.connect(widget.close)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(widget)
         widget.setTabOrder(self.ArrorTool, self.PencelTool)
         widget.setTabOrder(self.PencelTool, self.EraserTool)
