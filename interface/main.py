@@ -11,15 +11,16 @@ from typing import Union, List, Any
 import cv2
 import numpy as np
 import torch
-from PyQt6 import QtWidgets
+from PyQt6 import QtWidgets, QtCore, QtGui
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QImage, QPixmap
-from PyQt6.QtWidgets import QTableWidgetItem, QLineEdit, QPushButton, QDialog, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QTableWidgetItem, QLineEdit, QPushButton, QDialog, QHBoxLayout, QLabel, QWidget
 from torch import nn
 from torch.backends import cudnn
 
 from models.common import Conv
 from models.experimental import Ensemble
+from ui import barrier as ui_barrier
 from ui import config as ui_config
 from ui import main as ui_main
 from ui import source as ui_source
@@ -264,6 +265,11 @@ class Render(QLabel):
         self.label = self.parent.VideoLabel
 
         self.sync()
+
+    def get_image(self) -> QPixmap | None:
+        if self.video_url == '':
+            return None
+        return self.label.pixmap()
 
     def sync(self):
         self.video_url = self.parent.video_url
@@ -525,6 +531,128 @@ class SourceWindows(ui_source.Ui_dialog):
         self.dialog.close()
 
 
+class BarrierWindows(ui_barrier.Ui_widget):
+    class DrawWidget(QWidget):
+        def __init__(self, parent, pixmap):
+            super().__init__(parent)
+            self.parent = parent
+            self.pixmap = pixmap
+
+            self.last_point = QtCore.QPoint()
+            self._is_draw = False
+
+            # from pixmap to image
+            self.image = self.pixmap.toImage()
+            self.image = self.image.scaled(640, 480, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            self.painter = QtGui.QPainter(self.image)
+
+            self.painter.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0), 10, QtCore.Qt.PenStyle.SolidLine,
+                                           QtCore.Qt.PenCapStyle.RoundCap, QtCore.Qt.PenJoinStyle.RoundJoin))
+            self.painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 0, 0), QtCore.Qt.BrushStyle.SolidPattern))
+            self.painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            self.painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+            self.painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
+
+        def paintEvent(self, event):
+            painter = QtGui.QPainter(self)
+            painter.drawImage(0, 0, self.image)
+
+        def mousePressEvent(self, event):
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                # get pointer position relative to the widget
+                self.last_point = event.pos()
+            elif event.button() == QtCore.Qt.MouseButton.RightButton:
+                # draw line
+                self.painter.drawLine(self.last_point, event.pos())
+                self.update()
+
+
+
+    def __init__(self, parent):
+        self.parent = parent
+        super().__init__()
+
+        self._state = False
+
+        self.widget = QtWidgets.QWidget()
+        self.setupUi(self.widget)
+
+        self.init()
+
+    def get_image(self) -> QPixmap | None:
+        return self.parent.render.get_image()
+
+    def load_image(self):
+        pixmap = self.get_image()
+        if pixmap is None:
+            # render text
+            pixmap = QtGui.QPixmap(640, 480)
+            pixmap.fill(QtGui.QColor(255, 255, 255))
+            # fit image
+            pixmap = pixmap.scaled(640, 480, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            # write text
+            painter = QtGui.QPainter(pixmap)
+            painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0), 1, QtCore.Qt.PenStyle.SolidLine,
+                                      QtCore.Qt.PenCapStyle.RoundCap, QtCore.Qt.PenJoinStyle.RoundJoin))
+            painter.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0), QtCore.Qt.BrushStyle.SolidPattern))
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+            painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
+            painter.drawText(0, 0, 640, 480, QtCore.Qt.AlignmentFlag.AlignCenter, 'No Image')
+            painter.end()
+            return pixmap
+        return pixmap
+
+    def show_text(self, text: str, font_size: int = 20):
+        # set text
+        self.ImageLabel.setText(text)
+        self.ImageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.ImageLabel.setWordWrap(True)
+        # font
+        font = QFont()
+        font.setPointSize(font_size)
+        self.ImageLabel.setFont(font)
+
+    def change(self):
+        if self._state:
+            self._state = True
+            self.horizontalLayout.replaceWidget(self.ImageLabel, self.draw)
+        else:
+            self._state = False
+            self.horizontalLayout.replaceWidget(self.draw, self.ImageLabel)
+
+    def set_button(self, state: bool):
+        self.ArrorTool.setEnabled(state)
+        self.PencelTool.setEnabled(state)
+        self.EraserTool.setEnabled(state)
+
+        self.UndoButton.setEnabled(state)
+        self.SaveButton.setEnabled(state)
+
+    def disable(self):
+        self.set_button(False)
+
+    def enable(self):
+        self.set_button(True)
+
+    def init(self):
+        self.draw = self.DrawWidget(self.widget, self.load_image())
+        self.draw.resize(self.ImageLabel.size())
+
+        self.init_paint()
+
+        self.widget.show()
+
+    def init_paint(self):
+        pixmap = self.get_image()
+        if pixmap is None:
+            self.disable()
+            self.ImageLabel.setText('No Image')
+        else:
+            self.enable()
+            self.change()
+
+
 class MainWindows(ui_main.Ui_Form):
     _video_url = ''
     _iou_threshold = 0.25
@@ -585,12 +713,12 @@ class MainWindows(ui_main.Ui_Form):
         self.widget = QtWidgets.QWidget()
         self.setupUi(self.widget)
 
+        self.render = Render(self)
+
         self.show_text('请设置视频源')
         self.init()
 
         self._video_url = ''
-
-        self.render = Render(self)
 
     def show_text(self, text, font_size=40):
         # set text
@@ -607,9 +735,14 @@ class MainWindows(ui_main.Ui_Form):
 
         self.sourceWindow = SourceWindows(self)
         self.settingWindow = ConfigWindow(self)
+
         # click to show source window
         self.SourceButton.clicked.connect(self.sourceWindow.dialog.show)
         self.thresholdButton.clicked.connect(self.settingWindow.dialog.show)
+        self.barrierButton.clicked.connect(self.reload_barrier)
+
+    def reload_barrier(self):
+        self.barrierWindow = BarrierWindows(self)
 
     def save_config(self):
         with open(setting_path, 'w', encoding='utf-8') as f:
